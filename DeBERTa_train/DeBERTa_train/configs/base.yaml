@@ -1,0 +1,41 @@
+model_name: microsoft/deberta-v3-base
+seed: 42
+
+text_field: paragraph
+label_fields:
+  relevance: 0.5
+  info_density: 0.3
+  structure: 0.1
+  factual: 0.1
+
+train_file: data/photoresist_data4/train.json
+val_file: data/photoresist_data4/val.json
+test_file: data/photoresist_data4/test.json
+
+training:
+  output_dir: outputs/base_retrain
+  num_epochs: 25
+  train_batch_size: 8
+  eval_batch_size: 8
+  gradient_accumulation_steps: 4
+  learning_rate: 1.2e-5
+  weight_decay: 0.05
+  warmup_ratio: 0.1
+  max_length: 512
+  lr_scheduler_type: cosine
+  max_grad_norm: 1.0
+  mixed_precision: fp16
+  logging_steps: 50
+  eval_steps: 100
+  save_total_limit: 2
+  load_best_model_at_end: true
+  metric_for_best_model: overall_rmse
+  greater_is_better: false
+  dataloader_num_workers: 2
+
+checkpointing:
+  save_strategy: steps
+  save_steps: 100
+  eval_strategy: steps
+  report_to:
+    - tensorboard
