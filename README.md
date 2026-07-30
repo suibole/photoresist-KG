@@ -1,29 +1,71 @@
 # Photoresist Knowledge Graph and RAG Pipeline
 
-This repository contains research code for constructing a photoresist-domain knowledge graph from scientific literature and evaluating retrieval-augmented question answering over that graph.
+Welcome to the Photoresist Knowledge Graph project, a domain-specific knowledge graph and retrieval-augmented generation (RAG) pipeline developed for organizing and querying knowledge from photoresist literature.
 
-The workflow covers literature conversion, paragraph scoring, attribute-aware triple extraction, semantic normalization, Neo4j graph import, and comparison between an LLM-only baseline and a knowledge-graph RAG pipeline.
+## Project Overview
 
-## Pipeline Overview
+This project uses large language models (LLMs), a DeBERTa-based paragraph-value assessment model, semantic normalization, and Neo4j to transform unstructured scientific literature into an attribute-enhanced knowledge graph.
 
-```text
-PDF literature
-  -> Markdown conversion with MinerU
-  -> paragraph-level JSON construction
-  -> paragraph filtering
-  -> LLM-assisted paragraph value scoring
-  -> DeBERTa paragraph scoring model training or inference
-  -> attribute-aware knowledge triple extraction
-  -> semantic entity and relation normalization
-  -> Neo4j graph import
-  -> LLM-only and KG-RAG question answering evaluation
+The workflow was applied to nearly 12,000 full-text photoresist publications. The resulting knowledge graph reported in the associated manuscript contains approximately:
+
+- 320,000 entities;
+- 178,000 relations;
+- 1,172,000 attribute entries;
+- 600,000 valid attribute-enhanced triples.
+
+The knowledge graph was integrated with an LLM through a dual-path RAG strategy combining keyword retrieval and Cypher-based graph querying. On a benchmark of 150 expert-designed multiple-choice questions, the KG-enhanced system achieved an overall accuracy of 95.33%, compared with 76.67% for the LLM-only baseline.
+
+## Key Features
+
+### Paragraph-Value Assessment
+
+An LLM-guided weak-supervision strategy assigns paragraph-level scores across four dimensions:
+
+- topic relevance;
+- information density;
+- logical structure;
+- factual accuracy.
+
+A DeBERTa regression model is then trained to identify high-value paragraphs before knowledge extraction.
+
+### Attribute-Enhanced Triple Extraction
+
+The extraction pipeline represents knowledge using an attribute-enhanced triple structure. In addition to subject, relation, and object fields, the representation preserves numerical values, units, experimental conditions, processing parameters, and performance metrics.
+
+Example:
+
+```json
+{
+  "start_node": "photoresist film",
+  "sn_attribute": ["thickness: 1 um"],
+  "relationship": "requires_prebake_condition",
+  "re_attribute": ["temperature: 110 C", "time: 60 s"],
+  "end_node": "thermal stabilization",
+  "en_attribute": [],
+  "doi": "10.xxxx/example",
+  "title": "Source article title"
+}
 ```
+
+### Semantic Normalization
+
+Entity and relation expressions are embedded using `paraphrase-mpnet-base-v2` and normalized through cosine-similarity-based clustering. The released configuration uses a similarity threshold of 0.9.
+
+### Knowledge-Graph Question Answering
+
+The RAG system combines two retrieval paths:
+
+- keyword-based retrieval for broad semantic coverage;
+- dynamically generated Cypher queries for graph-structured retrieval.
+
+Retrieved triples are converted into evidence context for the LLM to support traceable, knowledge-grounded answers.
 
 ## Repository Layout
 
 ```text
 .
 |-- README.md
+|-- LICENSE
 |-- requirements.txt
 |-- scripts/
 |   |-- 01_pdf_to_markdown_mineru.sh
@@ -35,207 +77,200 @@ PDF literature
 |   |-- 07_import_triples_to_neo4j.py
 |   |-- 08_run_llm_baseline_qa.py
 |   `-- 09_run_kg_rag_qa.py
-`-- DeBERTa_train/
-    `-- DeBERTa_train/
-        |-- README.md
-        |-- configs/base.yaml
-        |-- requirements.txt
-        `-- src/
+|-- DeBERTa_train/DeBERTa_train/
+|   |-- README.md
+|   |-- configs/base.yaml
+|   |-- requirements.txt
+|   `-- src/
+|-- example_extracted_triples_v1.0.zip
+|-- photoresist_paragraph_value_dataset_v1.0.zip
+`-- photoresist_qa_benchmark_v1.0.zip
 ```
 
-## Main Components
 
-### Corpus Processing
 
-- `scripts/01_pdf_to_markdown_mineru.sh` converts PDF files to Markdown using MinerU.
-- `scripts/02_markdown_to_paragraph_json.py` converts Markdown documents into paragraph-level JSON records.
-- `scripts/03_filter_short_paragraphs.py` removes short, low-information, keyword-only, and table-like paragraphs.
+## Released Data
 
-### Paragraph Scoring
+### 1. Paragraph-Value Assessment Dataset
 
-- `scripts/04_score_paragraphs_with_llm.py` uses an LLM to assign weak labels for paragraph value dimensions.
-- `DeBERTa_train/DeBERTa_train/` contains the DeBERTa-based regression model used to predict paragraph value scores.
+`photoresist_paragraph_value_dataset_v1.0.zip` contains 10,000 weakly labeled paragraph records used to train and evaluate the paragraph-value assessment model.
 
-### Knowledge Graph Construction
+The predefined split is:
 
-- `scripts/05_extract_attribute_triples.py` extracts attribute-aware triples from selected paragraphs.
-- `scripts/06_semantic_normalize_triples.py` normalizes entity and relation surface forms with sentence embeddings.
-- `scripts/07_import_triples_to_neo4j.py` imports normalized triples into Neo4j.
+| Split | Number of records | Percentage |
+|---|---:|---:|
+| Training | 8,000 | 80% |
+| Validation | 1,000 | 10% |
+| Test | 1,000 | 10% |
 
-### QA Evaluation
+Each record contains paragraph text and four continuous labels:
 
-- `scripts/08_run_llm_baseline_qa.py` evaluates a direct LLM-only multiple-choice QA baseline.
-- `scripts/09_run_kg_rag_qa.py` evaluates a two-path KG-RAG workflow using keyword retrieval and generated Cypher conditions.
+```json
+{
+  "paragraph": "Paragraph text ...",
+  "labels": {
+    "relevance": 0.85,
+    "info_density": 0.75,
+    "structure": 0.70,
+    "factual": 0.90
+  }
+}
+```
 
-## Environment Setup
+The released training, validation, and test files should be used without repartitioning when reproducing the reported paragraph-model evaluation.
 
-Use Python 3.10 or later.
+### 2. Extracted Triple Examples
+
+`example_extracted_triples_v1.0.zip` contains representative attribute-enhanced triples generated by the extraction pipeline. Records include source identifiers such as DOI and article title when available.
+
+This archive is a representative example subset. It is not the complete photoresist knowledge graph and does not contain the complete set of approximately 600,000 triples reported in the manuscript.
+
+### 3. Photoresist QA Benchmark
+
+`photoresist_qa_benchmark_v1.0.zip` contains the 150-question multiple-choice benchmark used in the manuscript.
+
+The benchmark covers four categories:
+
+- material formulations;
+- process control;
+- lithography technology;
+- integrated applications.
+
+Each benchmark record contains:
+
+- a stable question ID;
+- a category label;
+- the question text;
+- four answer options;
+- the expert-assigned correct option.
+
+Example:
+
+```json
+{
+  "question_id": "Q001",
+  "category": "process_control",
+  "question": "Question text ...",
+  "options": {
+    "A": "Option A",
+    "B": "Option B",
+    "C": "Option C",
+    "D": "Option D"
+  },
+  "correct_option": "B"
+}
+```
+
+If model-response files are released, their exact filenames and contents should be listed here. Do not claim that LLM-only or KG-RAG predictions are included unless those files are present in the repository.
+
+## Environment Requirements
+
+Python 3.10 or later is recommended.
+
+Install the main dependencies:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-The DeBERTa training module has additional development and training dependencies:
-
-```bash
 pip install -r DeBERTa_train/DeBERTa_train/requirements.txt
 ```
 
-Additional runtime services are required for the full pipeline:
+On Windows PowerShell, activate the environment using:
 
-- MinerU for PDF-to-Markdown conversion.
-- GNU Parallel for parallel PDF conversion in `01_pdf_to_markdown_mineru.sh`.
-- Neo4j 5.x for graph storage and retrieval.
-- Access to an OpenAI-compatible LLM API for paragraph scoring, triple extraction, and QA.
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Additional software and services required for the complete pipeline include:
+
+- MinerU for PDF-to-Markdown conversion;
+- GNU Parallel for parallel conversion with the supplied shell script;
+- Neo4j 5.x for graph storage and retrieval;
+- an OpenAI-compatible LLM API for weak labeling, triple extraction, and QA.
 
 ## Configuration
 
-Do not commit credentials, private corpus files, generated model checkpoints, or Neo4j database dumps.
+The current pipeline scripts use configuration placeholders defined inside the scripts. They do not currently expose a unified command-line interface, and most scripts do not automatically read a `.env` file.
 
-Create a local `.env` file from `.env.example` or set equivalent environment variables in your shell:
+Before running the pipeline, provide the required paths and service parameters in the corresponding files:
+
+| Component | Settings to configure |
+|---|---|
+| `01_pdf_to_markdown_mineru.sh` | `INPUT_BASE_DIR`, `OUTPUT_BASE_DIR`, and storage-directory layout |
+| `02_markdown_to_paragraph_json.py` | `input_directory` and `output_directory` in the main block |
+| `03_filter_short_paragraphs.py` | `SRC_DIR`, `DST_DIR`, and `SHORT_THRESHOLD` |
+| `04_score_paragraphs_with_llm.py` | API endpoint/key settings and input/output files in `main()` |
+| `05_extract_attribute_triples.py` | API configurations, `JSON_DIR`, `OUTPUT_DIR`, and `NO_ATTRIBUTES_DIR` |
+| `06_semantic_normalize_triples.py` | embedding configuration, `INPUT_DIR`, and `OUTPUT_DIR` |
+| `07_import_triples_to_neo4j.py` | input path and Neo4j connection settings in `main()` |
+| `08_run_llm_baseline_qa.py` | API endpoint/key, model name, and input file |
+| `09_run_kg_rag_qa.py` | `Config` class values and QA input/output files |
+
+Do not commit real API keys, Neo4j passwords, access tokens, publisher-controlled PDF files, or other credentials.
+
+## Running the Pipeline
+
+After configuring each script, execute the stages sequentially:
+
+```text
+01  PDF-to-Markdown conversion
+02  Markdown-to-paragraph JSON conversion
+03  paragraph filtering
+04  LLM-assisted weak labeling
+05  attribute-enhanced triple extraction
+06  semantic normalization
+07  Neo4j graph import
+08  LLM-only QA evaluation
+09  KG-enhanced RAG evaluation
+```
+
+For example:
 
 ```bash
-cp .env.example .env
+bash scripts/01_pdf_to_markdown_mineru.sh
+python scripts/02_markdown_to_paragraph_json.py
+python scripts/03_filter_short_paragraphs.py
+python scripts/04_score_paragraphs_with_llm.py
+python scripts/05_extract_attribute_triples.py
+python scripts/06_semantic_normalize_triples.py
+python scripts/07_import_triples_to_neo4j.py
+python scripts/08_run_llm_baseline_qa.py
+python scripts/09_run_kg_rag_qa.py
 ```
 
-The research scripts use command-line arguments for input and output paths. API credentials and service endpoints can be supplied either through command-line arguments or environment variables. Keep local credentials in `.env` or your shell environment, and do not commit `.env` to Git.
+These commands assume that the required path and service placeholders have already been configured.
 
-Common settings include:
+## Training the Paragraph-Value Model
 
-- `LLM_BASE_URL`: base URL for the OpenAI-compatible API.
-- `LLM_API_KEY` or `LLM_API_KEYS`: API key or comma-separated key list.
-- `LLM_MODEL`: model name used by the API.
-- `NEO4J_URI`: Neo4j Bolt URI, for example `bolt://localhost:7687`.
-- `NEO4J_USER`: Neo4j user name.
-- `NEO4J_PASSWORD`: Neo4j password.
+The released training module is located in `DeBERTa_train/DeBERTa_train/`.
 
-## Expected Data Formats
+Before training, edit `configs/base.yaml` and replace the original machine-specific absolute paths with valid local or relative paths:
 
-### Paragraph JSON
+```yaml
+model_name: microsoft/deberta-v3-base
+seed: 42
 
-Most downstream scripts expect paragraph records in one of the following forms:
+train_file: data/paragraph_value_train.json
+val_file: data/paragraph_value_validation.json
+test_file: data/paragraph_value_test.json
 
-```json
-[
-  {
-    "index": 1,
-    "content": "Paragraph text ..."
-  }
-]
+training:
+  output_dir: outputs/base_retrain
+  num_epochs: 25
+  train_batch_size: 8
+  eval_batch_size: 8
+  learning_rate: 1.2e-5
 ```
 
-or:
-
-```json
-{
-  "metadata": {
-    "title": "Paper title",
-    "doi": "10.xxxx/example"
-  },
-  "abstract": "Abstract text ...",
-  "paragraphs": [
-    {
-      "index": 1,
-      "content": "Paragraph text ..."
-    }
-  ]
-}
-```
-
-### Paragraph Scoring Labels
-
-The DeBERTa scoring model expects supervised records with continuous labels:
-
-```json
-[
-  {
-    "paragraph": "Paragraph text ...",
-    "labels": {
-      "relevance": 0.85,
-      "info_density": 0.75,
-      "structure": 0.70,
-      "factual": 0.90
-    }
-  }
-]
-```
-
-### Attribute-Aware Triple JSON
-
-Triple extraction and graph import use the following schema:
-
-```json
-[
-  {
-    "start_node": "photoresist film",
-    "sn_attribute": ["thickness: 1 um"],
-    "relationship": "requires_prebake_condition",
-    "re_attribute": ["temperature: 110 C", "time: 60 s"],
-    "end_node": "thermal stabilization",
-    "en_attribute": []
-  }
-]
-```
-
-## Typical Usage
-
-Run each stage with explicit input and output paths. Replace the example paths with your local data locations.
-
-```bash
-bash scripts/01_pdf_to_markdown_mineru.sh \
-  --input-base-dir data/pdfs \
-  --output-base-dir outputs/markdown
-
-python scripts/02_markdown_to_paragraph_json.py \
-  --input-dir outputs/markdown \
-  --output-dir outputs/paragraph_json
-
-python scripts/03_filter_short_paragraphs.py \
-  --input-dir outputs/paragraph_json/auto \
-  --output-dir outputs/filtered_paragraphs
-
-python scripts/04_score_paragraphs_with_llm.py \
-  --input-file outputs/filtered_paragraphs/example_cleaned.json \
-  --output-file outputs/scored_paragraphs.json \
-  --api-key "$LLM_API_KEY"
-
-python scripts/05_extract_attribute_triples.py \
-  --input-dir outputs/filtered_paragraphs \
-  --output-dir outputs/triples \
-  --api-key "$LLM_API_KEY"
-
-python scripts/06_semantic_normalize_triples.py \
-  --input-dir outputs/triples \
-  --output-dir outputs/normalized_triples
-
-python scripts/07_import_triples_to_neo4j.py \
-  --triples-path outputs/normalized_triples \
-  --neo4j-uri "$NEO4J_URI" \
-  --neo4j-user "$NEO4J_USER" \
-  --neo4j-password "$NEO4J_PASSWORD"
-
-python scripts/08_run_llm_baseline_qa.py \
-  --input-file data/questions.json \
-  --output-file outputs/llm_baseline_answers.json \
-  --api-key "$LLM_API_KEY"
-
-python scripts/09_run_kg_rag_qa.py \
-  --input-file data/questions.json \
-  --output-file outputs/kg_rag_answers.json \
-  --llm-api-key "$LLM_API_KEY" \
-  --neo4j-password "$NEO4J_PASSWORD"
-```
-
-Train the DeBERTa scoring model:
+Then run:
 
 ```bash
 cd DeBERTa_train/DeBERTa_train
 python -m src.training.train --config configs/base.yaml
 ```
 
-Generate predictions with a trained checkpoint:
+Generate predictions using a trained checkpoint:
 
 ```bash
 python -m src.cli.run_predict \
@@ -245,26 +280,40 @@ python -m src.cli.run_predict \
   --output outputs/predictions
 ```
 
-## Data and Model Availability
+The model identifier in `configs/base.yaml`, the associated manuscript, and any released checkpoint must refer to the same DeBERTa variant. The current released configuration specifies `microsoft/deberta-v3-base`; update either the configuration or the manuscript if another variant was used in the reported experiments.
 
-The full-text literature corpus is not included because publisher licenses may restrict redistribution. Large intermediate files, generated outputs, DeBERTa checkpoints, and Neo4j database files should be archived separately, for example on Zenodo, Hugging Face, or an institutional repository.
+## Data and Software Availability
 
-This repository is intended to provide the executable research pipeline and expected data schemas. To reproduce reported results, users must provide the literature corpus, local API credentials, Neo4j instance, and any released model checkpoints.
+The source code and released datasets described above are available in this GitHub repository:
 
-## Git Hygiene
+<https://github.com/suibole/photoresist-KG>
 
-Before publishing this repository, verify that the following files are not committed:
+The full-text literature corpus is not redistributed because publisher licences may restrict redistribution. Users must obtain source articles through lawful open-access or institution-authorized routes.
 
-- `.env` or any file containing API keys, passwords, cookies, or tokens.
-- Full-text PDFs and publisher-controlled literature.
-- Large generated JSON outputs, model checkpoints, embeddings, and Neo4j dumps.
-- Python bytecode caches such as `__pycache__/` and `*.pyc`.
-- Local logs, temporary conversion outputs, and failed-PDF copies.
+The public release contains the paragraph-value assessment dataset, the photoresist QA benchmark, and representative extracted triple examples. The representative triple archive is not the complete knowledge graph. Consequently, this repository supports inspection and reproduction of the released components but does not independently contain the complete set of approximately 600,000 triples reported in the manuscript.
 
-The included `.gitignore` provides conservative defaults for these categories.
+Any paragraph text released in the training dataset should be limited to content that the authors are permitted to redistribute. Source identifiers and provenance metadata should be retained whenever possible.
+
+## Security and Repository Hygiene
+
+Before publishing or updating the repository, verify that it does not contain:
+
+- API keys, passwords, tokens, cookies, or populated `.env` files;
+- publisher-controlled full-text PDF files;
+- machine-specific absolute paths that expose local usernames or server directories;
+- Neo4j credentials or database dumps containing restricted content;
+- `__pycache__/`, `.pyc`, test caches, logs, or temporary output files.
 
 ## License and Citation
 
-This repository is provided for academic peer review, manuscript evaluation, and reproducibility inspection only. See `LICENSE` for details.
+See `LICENSE` for the repository licence.
 
-If this code supports a manuscript, add the manuscript citation here once it is available.
+If you use this repository or the released datasets, please cite the associated manuscript and reference this GitHub repository:
+
+```text
+Code and released data: https://github.com/suibole/photoresist-KG
+```
+
+## Contributions
+
+Issues and pull requests are welcome. When reporting a problem, please include the affected script, software environment, relevant configuration, and a minimal reproducible example without credentials or publisher-restricted content.
