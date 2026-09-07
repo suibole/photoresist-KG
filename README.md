@@ -60,6 +60,18 @@ The RAG system combines two retrieval paths:
 
 Retrieved triples are converted into evidence context for the LLM to support traceable, knowledge-grounded answers.
 
+### Ablation Experiments
+
+Three separately executable scripts are provided to evaluate the contributions of the retrieval pathways and triple representations:
+
+| Script | Retrieval pathway | Evidence representation |
+|---|---|---|
+| `10_keyword_only.py` | Keyword retrieval only | Attribute-enhanced triples |
+| `11_cypher_only.py` | Cypher retrieval only | Attribute-enhanced triples |
+| `12_dual_stan.py` | Keyword + Cypher retrieval | Standard triples |
+
+All three experiments use the same 150-question benchmark, the same Neo4j graph, and the same LLM configuration. In the standard-triple condition, node and relation attributes are removed from the evidence context supplied to the answering LLM, so that the final context is represented as head–relation–tail triples.
+
 ## Repository Layout
 
 ```text
@@ -206,6 +218,9 @@ Before running the pipeline, provide the required paths and service parameters i
 | `07_import_triples_to_neo4j.py` | input path and Neo4j connection settings in `main()` |
 | `08_run_llm_baseline_qa.py` | API endpoint/key, model name, and input file |
 | `09_run_kg_rag_qa.py` | `Config` class values and QA input/output files |
+| `10_keyword_only.py` | ` Keyword-only retrieval with attribute-enhanced triples |
+| `11_cypher_only.py` | ` Cypher-only retrieval with attribute-enhanced triples |
+| ` 12_dual_stan.py` | ` Dual-path retrieval with standard triples |
 
 Do not commit real API keys, Neo4j passwords, access tokens, publisher-controlled PDF files, or other credentials.
 
@@ -240,6 +255,26 @@ python scripts/09_run_kg_rag_qa.py
 ```
 
 These commands assume that the required path and service placeholders have already been configured.
+
+### Running the Ablation Experiments
+
+The ablation scripts can be run separately as follows:
+
+```bash
+python scripts/10_keyword_only.py \
+  --input path/to/qa_benchmark.json \
+  --output-dir outputs/keyword_only \
+  --analysis-cache outputs/shared/query_analysis_cache.json
+
+python scripts/11_cypher_only.py \
+  --input path/to/qa_benchmark.json \
+  --output-dir outputs/cypher_only \
+  --analysis-cache outputs/shared/query_analysis_cache.json
+
+python scripts/12_dual_stan.py \
+  --input path/to/qa_benchmark.json \
+  --output-dir outputs/dual_standard \
+  --analysis-cache outputs/shared/query_analysis_cache.json
 
 ## Training the Paragraph-Value Model
 
@@ -290,7 +325,7 @@ The source code and released datasets described above are available in this GitH
 
 The full-text literature corpus is not redistributed because publisher licences may restrict redistribution. Users must obtain source articles through lawful open-access or institution-authorized routes.
 
-The public release contains the paragraph-value assessment dataset, the photoresist QA benchmark, and representative extracted triple examples. The representative triple archive is not the complete knowledge graph. Consequently, this repository supports inspection and reproduction of the released components but does not independently contain the complete set of approximately 600,000 triples reported in the manuscript.
+The public release contains the paragraph-value assessment dataset, the photoresist QA benchmark, and representative extracted triple examples. The representative triple archive is not the complete knowledge graph. Consequently, this repository supports inspection and reproduction of the released components but does not independently contain the complete set of approximately 600,000 triples reported in the manuscript.The three ablation scripts used to compare retrieval pathways and triple representations are included in the `scripts/` directory. The repository does not include the full-text literature corpus or the complete knowledge graph because of publisher licensing restrictions.The corresponding per-question evaluation outputs and summary results are provided in the Q&A.zip file.
 
 Any paragraph text released in the training dataset should be limited to content that the authors are permitted to redistribute. Source identifiers and provenance metadata should be retained whenever possible.
 
