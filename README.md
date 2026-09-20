@@ -62,15 +62,36 @@ Retrieved triples are converted into evidence context for the LLM to support tra
 
 ### Ablation Experiments
 
-Three separately executable scripts are provided to evaluate the contributions of the retrieval pathways and triple representations:
+## Ablation Experiments
+
+Five separately executable ablation scripts are provided to evaluate the effects of retrieval pathway and triple representation. Together with the complete dual-path attribute-enhanced RAG system, these experiments form a 3 × 2 configuration matrix combining three retrieval modes with two evidence representations.
 
 | Script | Retrieval pathway | Evidence representation |
 |---|---|---|
 | `10_keyword_only.py` | Keyword retrieval only | Attribute-enhanced triples |
 | `11_cypher_only.py` | Cypher retrieval only | Attribute-enhanced triples |
 | `12_dual_stan.py` | Keyword + Cypher retrieval | Standard triples |
+| `13_keyword_only_standard.py` | Keyword retrieval only | Standard triples |
+| `14_cypher_only_standard.py` | Cypher retrieval only | Standard triples |
 
-All three experiments use the same 150-question benchmark, the same Neo4j graph, and the same LLM configuration. In the standard-triple condition, node and relation attributes are removed from the evidence context supplied to the answering LLM, so that the final context is represented as head–relation–tail triples.
+The complete dual-path attribute-enhanced configuration is implemented in `09_run_kg_rag_qa.py`. The LLM-only baseline is implemented in `08_run_llm_baseline_qa.py`.
+
+All configurations use the same 150-question benchmark, answering LLM, prompt format, and evaluation protocol. In the standard-triple conditions, node and relation attributes are removed from the evidence supplied to the answering LLM, leaving only head–relation–tail triples.
+
+
+### Ablation Results
+
+| Experimental setting | Accuracy | Improvement over LLM-only (pp) | Reduction from dual-path attribute-enhanced RAG (pp) |
+|---|---:|---:|---:|
+| LLM-only baseline | 76.67% | — | 18.66 |
+| Keyword-only + attribute-enhanced triples | 92.00% | 15.33 | 3.33 |
+| Keyword-only + standard triples | 91.33% | 14.66 | 4.00 |
+| Cypher-only + attribute-enhanced triples | 89.33% | 12.66 | 6.00 |
+| Cypher-only + standard triples | 90.67% | 14.00 | 4.66 |
+| Dual-path + standard triples | 89.33% | 12.66 | 6.00 |
+| Dual-path attribute-enhanced RAG | 95.33% | 18.66 | — |
+
+Here, “pp” denotes percentage points. The dual-path attribute-enhanced RAG system achieved the highest accuracy. Attribute enhancement produced its largest benefit under dual-path retrieval, whereas the representation effects in the two single-path settings were smaller and nonuniform. The results therefore indicate that retrieval pathway and evidence representation interact, with the strongest performance obtained when dual-path retrieval is combined with attribute-enhanced triples.
 
 ## Repository Layout
 
@@ -88,7 +109,12 @@ All three experiments use the same 150-question benchmark, the same Neo4j graph,
 |   |-- 06_semantic_normalize_triples.py
 |   |-- 07_import_triples_to_neo4j.py
 |   |-- 08_run_llm_baseline_qa.py
-|   `-- 09_run_kg_rag_qa.py
+|   |-- 09_run_kg_rag_qa.py
+|   |-- 10_keyword_only.py
+|   |-- 11_cypher_only.py
+|   |-- 12_dual_stan.py
+|   |-- keyword_only_standard.py
+|   `-- cypher_only_standard.py
 |-- DeBERTa_train/DeBERTa_train/
 |   |-- README.md
 |   |-- configs/base.yaml
@@ -96,8 +122,8 @@ All three experiments use the same 150-question benchmark, the same Neo4j graph,
 |   `-- src/
 |-- example_extracted_triples_v1.0.zip
 |-- photoresist_paragraph_value_dataset_v1.0.zip
-`-- photoresist_qa_benchmark_v1.0.zip
-```
+|-- photoresist_qa_benchmark_v1.0.zip
+`-- Q&A.zip
 
 
 
@@ -210,17 +236,19 @@ Before running the pipeline, provide the required paths and service parameters i
 | Component | Settings to configure |
 |---|---|
 | `01_pdf_to_markdown_mineru.sh` | `INPUT_BASE_DIR`, `OUTPUT_BASE_DIR`, and storage-directory layout |
-| `02_markdown_to_paragraph_json.py` | `input_directory` and `output_directory` in the main block |
+| `02_markdown_to_paragraph_json.py` | Input and output directories |
 | `03_filter_short_paragraphs.py` | `SRC_DIR`, `DST_DIR`, and `SHORT_THRESHOLD` |
-| `04_score_paragraphs_with_llm.py` | API endpoint/key settings and input/output files in `main()` |
-| `05_extract_attribute_triples.py` | API configurations, `JSON_DIR`, `OUTPUT_DIR`, and `NO_ATTRIBUTES_DIR` |
-| `06_semantic_normalize_triples.py` | embedding configuration, `INPUT_DIR`, and `OUTPUT_DIR` |
-| `07_import_triples_to_neo4j.py` | input path and Neo4j connection settings in `main()` |
-| `08_run_llm_baseline_qa.py` | API endpoint/key, model name, and input file |
-| `09_run_kg_rag_qa.py` | `Config` class values and QA input/output files |
-| `10_keyword_only.py` | ` Keyword-only retrieval with attribute-enhanced triples |
-| `11_cypher_only.py` | ` Cypher-only retrieval with attribute-enhanced triples |
-| ` 12_dual_stan.py` | ` Dual-path retrieval with standard triples |
+| `04_score_paragraphs_with_llm.py` | API endpoint, API key, model name, and input/output paths |
+| `05_extract_attribute_triples.py` | API configuration, `JSON_DIR`, `OUTPUT_DIR`, and `NO_ATTRIBUTES_DIR` |
+| `06_semantic_normalize_triples.py` | Embedding configuration, `INPUT_DIR`, and `OUTPUT_DIR` |
+| `07_import_triples_to_neo4j.py` | Input path and Neo4j connection settings |
+| `08_run_llm_baseline_qa.py` | API endpoint, API key, model name, and QA input/output paths |
+| `09_run_kg_rag_qa.py` | API configuration, Neo4j connection, and QA input/output paths |
+| `10_keyword_only.py` | Keyword-only retrieval with attribute-enhanced triples |
+| `11_cypher_only.py` | Cypher-only retrieval with attribute-enhanced triples |
+| `12_dual_stan.py` | Dual-path retrieval with standard triples |
+| `13_keyword_only_standard.py` | Keyword-only retrieval with standard triples |
+| `14_cypher_only_standard.py` | Cypher-only retrieval with standard triples |
 
 Do not commit real API keys, Neo4j passwords, access tokens, publisher-controlled PDF files, or other credentials.
 
@@ -258,7 +286,7 @@ These commands assume that the required path and service placeholders have alrea
 
 ### Running the Ablation Experiments
 
-The ablation scripts can be run separately as follows:
+The five ablation experiments can be run independently:
 
 ```bash
 python scripts/10_keyword_only.py \
@@ -274,6 +302,16 @@ python scripts/11_cypher_only.py \
 python scripts/12_dual_stan.py \
   --input path/to/qa_benchmark.json \
   --output-dir outputs/dual_standard \
+  --analysis-cache outputs/shared/query_analysis_cache.json
+
+python scripts/13_keyword_only_standard.py \
+  --input path/to/qa_benchmark.json \
+  --output-dir outputs/keyword_only_standard \
+  --analysis-cache outputs/shared/query_analysis_cache.json
+
+python scripts/14_cypher_only_standard.py \
+  --input path/to/qa_benchmark.json \
+  --output-dir outputs/cypher_only_standard \
   --analysis-cache outputs/shared/query_analysis_cache.json
 
 ## Training the Paragraph-Value Model
@@ -325,7 +363,7 @@ The source code and released datasets described above are available in this GitH
 
 The full-text literature corpus is not redistributed because publisher licences may restrict redistribution. Users must obtain source articles through lawful open-access or institution-authorized routes.
 
-The public release contains the paragraph-value assessment dataset, the photoresist QA benchmark, and representative extracted triple examples. The representative triple archive is not the complete knowledge graph. Consequently, this repository supports inspection and reproduction of the released components but does not independently contain the complete set of approximately 600,000 triples reported in the manuscript.The three ablation scripts used to compare retrieval pathways and triple representations are included in the `scripts/` directory. The repository does not include the full-text literature corpus or the complete knowledge graph because of publisher licensing restrictions.The corresponding per-question evaluation outputs and summary results are provided in the Q&A.zip file.
+The public release contains the paragraph-value assessment dataset, the photoresist QA benchmark, and representative extracted triple examples. The representative triple archive is not the complete knowledge graph. Consequently, this repository supports inspection and reproduction of the released components but does not independently contain the complete set of approximately 600,000 triples reported in the manuscript.Five ablation scripts used to compare retrieval pathways and triple representations are included in the scripts/ directory. The corresponding per-question outputs and summary results are provided in Q&A.zip. The archive covers the LLM-only baseline, the complete dual-path attribute-enhanced RAG system, and the five ablated configurations reported above.
 
 Any paragraph text released in the training dataset should be limited to content that the authors are permitted to redistribute. Source identifiers and provenance metadata should be retained whenever possible.
 
